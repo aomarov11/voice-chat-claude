@@ -13,7 +13,8 @@ const appState = {
   spaceKeyPressed: false,  // Track if space is currently held down
   recordingRequested: false,  // Track if we've requested recording (even if not started yet)
   pressStartTime: null,  // Track when press started (for detecting hold vs toggle)
-  isHoldMode: false  // Track if user is in hold-to-talk mode
+  isHoldMode: false,  // Track if user is in hold-to-talk mode
+  shouldStopOnRelease: false  // Track if we should stop on next release (for toggle mode)
 };
 
 // DOM elements
@@ -215,16 +216,18 @@ function handlePressStart(source) {
   // Record when the press started
   appState.pressStartTime = Date.now();
 
-  // If already recording, this might be a stop request (toggle mode)
+  // If already recording, mark to stop on release (toggle mode - second tap)
   if (appState.recordingRequested || appState.isListening) {
-    console.log('Already recording - will stop on release (toggle mode)');
+    console.log('Already recording - marking to stop on release (toggle mode)');
+    appState.shouldStopOnRelease = true;
     return;
   }
 
-  // Start recording
+  // Start recording (toggle mode - first tap)
   console.log('Starting recording...');
   appState.recordingRequested = true;
-  appState.isHoldMode = false;  // We'll determine this on release
+  appState.isHoldMode = false;
+  appState.shouldStopOnRelease = false;
 
   // Update UI immediately
   updateButtonState('listening');
@@ -250,10 +253,21 @@ function handlePressEnd(source) {
   console.log('appState.isListening:', appState.isListening);
   console.log('appState.isProcessing:', appState.isProcessing);
   console.log('appState.recordingRequested:', appState.recordingRequested);
+  console.log('appState.shouldStopOnRelease:', appState.shouldStopOnRelease);
 
   // If we're not recording, nothing to do
   if (!appState.recordingRequested && !appState.isListening) {
     console.log('Not recording, nothing to do');
+    appState.pressStartTime = null;
+    appState.shouldStopOnRelease = false;
+    return;
+  }
+
+  // If marked to stop (toggle mode - second tap), stop immediately
+  if (appState.shouldStopOnRelease) {
+    console.log('Toggle mode - second tap - stopping recording');
+    appState.speechRecognition.stop();
+    appState.shouldStopOnRelease = false;
     appState.pressStartTime = null;
     return;
   }
@@ -273,8 +287,8 @@ function handlePressEnd(source) {
     appState.isHoldMode = true;
     appState.speechRecognition.stop();
   } else {
-    // TOGGLE MODE: Quick tap, recording continues until next press
-    console.log('Toggle mode detected - recording continues');
+    // TOGGLE MODE: Quick tap (first tap), recording continues until next press
+    console.log('Toggle mode - first tap - recording continues');
     appState.isHoldMode = false;
     // Don't stop - user needs to press again to stop
   }
@@ -392,6 +406,7 @@ function resetToIdle() {
   appState.recordingRequested = false;
   appState.pressStartTime = null;
   appState.isHoldMode = false;
+  appState.shouldStopOnRelease = false;
   updateButtonState('idle');
   updateStatus('Ready - Tap to toggle or hold to talk');
 }
