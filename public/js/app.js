@@ -15,7 +15,8 @@ const appState = {
   pressStartTime: null,  // Track when press started (for detecting hold vs toggle)
   isHoldMode: false,  // Track if user is in hold-to-talk mode
   shouldStopOnRelease: false,  // Track if we should stop on next release (for toggle mode)
-  silentMode: false  // Track if silent mode is enabled (text only, no voice output)
+  silentMode: false,  // Track if silent mode is enabled (text only, no voice output)
+  networkErrorShown: false  // Track if we've shown the Arc browser network error alert
 };
 
 // DOM elements
@@ -161,6 +162,33 @@ function setupSpeechRecognitionCallbacks() {
 
     let errorMessage = 'Error: ';
     switch (error) {
+      case 'network':
+        errorMessage += 'Network error - Arc browser may be blocking speech API';
+        debugLog('❌ NETWORK ERROR - Speech API cannot connect to servers', 'error');
+        debugLog('🔧 This is a known Arc browser issue. Try:', 'warning');
+        debugLog('   1. Use Chrome/Safari instead (EASIEST)', 'warning');
+        debugLog('   2. Check Arc Settings → Privacy → Allow Google services', 'warning');
+        debugLog('   3. Disable Arc Shields for this site', 'warning');
+        debugLog('   4. Try in a regular Chrome window', 'warning');
+
+        // Show a more helpful status message
+        updateStatus('Arc browser blocking speech API - see debug log for fixes');
+
+        // Show alert on first network error
+        if (!appState.networkErrorShown) {
+          appState.networkErrorShown = true;
+          setTimeout(() => {
+            alert('⚠️ Arc Browser Issue Detected\n\n' +
+                  'Arc is blocking the Speech Recognition API from connecting to Google\'s servers.\n\n' +
+                  'Quick Fixes:\n' +
+                  '1. Use Chrome or Safari instead (recommended)\n' +
+                  '2. Check Arc Settings → Privacy → Allow Google services\n' +
+                  '3. Disable Arc Shields for this site\n' +
+                  '4. Try in Little Arc window (Cmd+Shift+N)\n\n' +
+                  'The app works perfectly in Chrome and Safari!');
+          }, 500);
+        }
+        break;
       case 'no-speech':
         errorMessage += 'No speech detected - speak immediately after pressing';
         debugLog('⚠️ No speech detected - you need to speak within a few seconds of pressing', 'warning');

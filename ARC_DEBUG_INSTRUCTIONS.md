@@ -1,5 +1,39 @@
 # Arc Browser Debugging Instructions
 
+## 🚨 ISSUE IDENTIFIED: Network Error
+
+**Root Cause**: Arc browser is blocking the Web Speech API from connecting to Google's speech recognition servers.
+
+**Error**: `network` error occurs immediately after starting speech recognition.
+
+**Quick Fixes** (try in order):
+
+### Fix 1: Use Chrome/Safari Instead (Recommended)
+The app works perfectly in Chrome and Safari. This is the fastest solution.
+
+### Fix 2: Check Arc Privacy Settings
+1. Arc menu → Settings → Privacy & Security
+2. Look for options blocking Google services or external APIs
+3. Allow Google Speech API services
+4. Restart Arc
+
+### Fix 3: Disable Arc Shields
+1. Click the shield icon in the address bar
+2. Turn off shields/content blocking for this site
+3. Refresh the page
+
+### Fix 4: Check Arc Boosts
+1. Arc menu → Settings → Boosts
+2. Disable any boosts for your domain
+3. Refresh
+
+### Fix 5: Try Little Arc Window
+1. Open a Little Arc window (Cmd + Shift + N)
+2. Navigate to your app
+3. Test if it works there
+
+---
+
 ## 🔍 Step 1: Use the Debug Tool (IMPORTANT!)
 
 I've created a special debug page to diagnose the issue:
