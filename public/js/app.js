@@ -275,7 +275,7 @@ function setupKeyboardControls() {
  * Handle press start (button/key pressed down)
  * Supports both toggle and hold modes
  */
-function handlePressStart(source) {
+async function handlePressStart(source) {
   console.log('=== handlePressStart called ===', 'source:', source);
   console.log('appState.isProcessing:', appState.isProcessing);
   console.log('appState.isListening:', appState.isListening);
@@ -310,16 +310,18 @@ function handlePressStart(source) {
 
   // Update UI immediately
   updateButtonState('listening');
-  updateStatus('Starting...');
+  updateStatus('Requesting microphone...');
 
-  const started = appState.speechRecognition.start();
+  const started = await appState.speechRecognition.start();
   console.log('start() returned:', started);
 
   if (!started) {
-    updateStatus('Failed to start listening');
+    updateStatus('Failed to start - check microphone');
     appState.recordingRequested = false;
     updateButtonState('idle');
     appState.pressStartTime = null;
+  } else {
+    updateStatus('Listening - speak now!');
   }
 }
 
