@@ -31,6 +31,8 @@ const elements = {
  */
 function initializeApp() {
   console.log('Initializing Voice Chat App...');
+  console.log('Browser:', navigator.userAgent);
+  console.log('Platform:', navigator.platform);
 
   // Initialize speech recognition
   appState.speechRecognition = new SpeechRecognitionWrapper();
@@ -51,6 +53,10 @@ function initializeApp() {
 
   // Setup keyboard controls
   setupKeyboardControls();
+
+  // Log that button is ready
+  console.log('Push-to-talk button element:', elements.pushToTalkButton);
+  console.log('Button disabled:', elements.pushToTalkButton.disabled);
 
   console.log('App initialized successfully');
   updateStatus('Ready - Tap to toggle or hold to talk');
@@ -126,25 +132,50 @@ function setupSpeechRecognitionCallbacks() {
  * Setup push-to-talk button event handlers
  */
 function setupPushToTalkButton() {
+  console.log('Setting up push-to-talk button event listeners...');
+
+  // Prevent default button behavior
+  elements.pushToTalkButton.addEventListener('click', (e) => {
+    console.log('>>> BUTTON click event fired (this is prevented, using mousedown/up instead)');
+    e.preventDefault();
+  });
+
   // Support both toggle and hold modes
   elements.pushToTalkButton.addEventListener('mousedown', (e) => {
     console.log('>>> BUTTON mousedown');
     e.preventDefault();
+    e.stopPropagation();
     handlePressStart('button');
   });
 
   elements.pushToTalkButton.addEventListener('mouseup', (e) => {
     console.log('>>> BUTTON mouseup');
     e.preventDefault();
+    e.stopPropagation();
     handlePressEnd('button');
   });
 
   elements.pushToTalkButton.addEventListener('mouseleave', (e) => {
     console.log('>>> BUTTON mouseleave');
     // If they're holding and mouse leaves, treat it as release
-    if (appState.isHoldMode) {
+    if (appState.isHoldMode || appState.recordingRequested) {
       handlePressEnd('button');
     }
+  });
+
+  // Pointer events (more modern, works in more browsers including Arc)
+  elements.pushToTalkButton.addEventListener('pointerdown', (e) => {
+    console.log('>>> BUTTON pointerdown');
+    e.preventDefault();
+    e.stopPropagation();
+    handlePressStart('button');
+  });
+
+  elements.pushToTalkButton.addEventListener('pointerup', (e) => {
+    console.log('>>> BUTTON pointerup');
+    e.preventDefault();
+    e.stopPropagation();
+    handlePressEnd('button');
   });
 
   // Touch support for mobile
@@ -159,6 +190,15 @@ function setupPushToTalkButton() {
     e.preventDefault();
     handlePressEnd('button');
   });
+
+  // Debug: Log ALL events on the button
+  ['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'touchstart', 'touchend'].forEach(eventType => {
+    elements.pushToTalkButton.addEventListener(eventType, () => {
+      console.log(`[DEBUG] Button ${eventType} event fired`);
+    }, { passive: false });
+  });
+
+  console.log('Button event listeners set up successfully');
 }
 
 /**

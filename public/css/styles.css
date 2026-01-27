@@ -184,6 +184,10 @@ body {
   outline: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
 }
 
 .push-to-talk-button:hover:not(:disabled) {
