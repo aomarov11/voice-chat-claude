@@ -26,8 +26,17 @@ body {
   background-color: var(--bg-color);
   color: var(--text-color);
   line-height: 1.6;
-  height: 100vh;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   overflow: hidden;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
+}
+
+html {
+  height: -webkit-fill-available;
 }
 
 /* Container */
@@ -35,9 +44,11 @@ body {
   max-width: 800px;
   margin: 0 auto;
   height: 100vh;
+  height: -webkit-fill-available;
   display: flex;
   flex-direction: column;
   padding: 20px;
+  overflow: hidden;
 }
 
 /* Header */
@@ -142,6 +153,9 @@ body {
   padding: 20px 0;
   gap: 15px;
   border-top: 2px solid #e0e0e0;
+  min-height: 200px;
+  flex-shrink: 0;
+  background-color: var(--bg-color);
 }
 
 /* Status Indicator */
@@ -288,25 +302,77 @@ body {
 
 /* Mobile responsive */
 @media (max-width: 768px) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
   .container {
-    padding: 15px;
+    padding: 10px;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+
+  .header {
+    padding: 10px 0;
   }
 
   .header h1 {
     font-size: 1.5rem;
   }
 
+  .subtitle {
+    font-size: 0.85rem;
+  }
+
+  .conversation-container {
+    margin: 10px 0;
+    padding: 10px 5px;
+  }
+
   .message-bubble {
     max-width: 85%;
+    font-size: 0.95rem;
+  }
+
+  .controls {
+    padding: 15px 0;
+    gap: 12px;
   }
 
   .push-to-talk-button {
-    width: 100px;
-    height: 100px;
+    width: 90px;
+    height: 90px;
+    font-size: 0.75rem;
   }
 
   .mic-icon {
-    width: 35px;
-    height: 35px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .button-text {
+    font-size: 0.7rem;
+  }
+
+  .status {
+    font-size: 0.85rem;
+    padding: 6px 16px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 375px) {
+  .push-to-talk-button {
+    width: 80px;
+    height: 80px;
+  }
+
+  .mic-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .button-text {
+    font-size: 0.65rem;
   }
 }

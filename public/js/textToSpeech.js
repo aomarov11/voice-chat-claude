@@ -15,6 +15,7 @@ class TextToSpeechWrapper {
     this.supported = true;
     this.synthesis = window.speechSynthesis;
     this.currentUtterance = null;
+    this.iosUnlocked = false;
 
     // Default configuration
     this.config = {
@@ -23,6 +24,42 @@ class TextToSpeechWrapper {
       volume: 1.0,  // Volume (0 to 1)
       lang: 'en-US'
     };
+
+    // iOS/Safari specific: preload voices
+    if (typeof window !== 'undefined') {
+      // Load voices
+      this.voices = [];
+      this.loadVoices();
+
+      // iOS requires voices to be loaded after onvoiceschanged event
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          this.loadVoices();
+        };
+      }
+    }
+  }
+
+  /**
+   * Load available voices (important for iOS)
+   */
+  loadVoices() {
+    this.voices = this.synthesis.getVoices();
+    console.log('Loaded voices:', this.voices.length);
+  }
+
+  /**
+   * Unlock iOS audio (must be called from user gesture)
+   */
+  unlockIOSAudio() {
+    if (this.iosUnlocked) return;
+
+    // iOS requires speaking something (even silence) from a user gesture
+    const utterance = new SpeechSynthesisUtterance('');
+    utterance.volume = 0;
+    this.synthesis.speak(utterance);
+    this.iosUnlocked = true;
+    console.log('iOS audio unlocked');
   }
 
   /**
@@ -41,8 +78,22 @@ class TextToSpeechWrapper {
       return false;
     }
 
+    // Ensure iOS audio is unlocked
+    if (!this.iosUnlocked) {
+      this.unlockIOSAudio();
+    }
+
     // Cancel any ongoing speech
     this.stop();
+
+    // iOS/Safari sometimes needs a delay before speaking
+    // Also need to ensure synthesis is not paused
+    if (this.synthesis.paused) {
+      this.synthesis.resume();
+    }
+
+    // Cancel any queued speech
+    this.synthesis.cancel();
 
     // Create new utterance
     this.currentUtterance = new SpeechSynthesisUtterance(text);
@@ -52,6 +103,16 @@ class TextToSpeechWrapper {
     this.currentUtterance.pitch = options.pitch || this.config.pitch;
     this.currentUtterance.volume = options.volume || this.config.volume;
     this.currentUtterance.lang = options.lang || this.config.lang;
+
+    // Try to use a good voice on iOS
+    if (this.voices.length > 0) {
+      const preferredVoice = this.voices.find(voice =>
+        voice.lang.startsWith('en') && !voice.name.includes('Google')
+      );
+      if (preferredVoice) {
+        this.currentUtterance.voice = preferredVoice;
+      }
+    }
 
     // Event handlers
     this.currentUtterance.onstart = () => {
@@ -70,7 +131,10 @@ class TextToSpeechWrapper {
 
     // Speak the text
     try {
-      this.synthesis.speak(this.currentUtterance);
+      // Small delay for iOS (helps with reliability)
+      setTimeout(() => {
+        this.synthesis.speak(this.currentUtterance);
+      }, 100);
       return true;
     } catch (error) {
       console.error('Error speaking text:', error);

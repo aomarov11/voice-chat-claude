@@ -247,6 +247,11 @@ function handlePressStart(source) {
   console.log('appState.isListening:', appState.isListening);
   console.log('appState.recordingRequested:', appState.recordingRequested);
 
+  // Unlock iOS audio on first user interaction
+  if (appState.textToSpeech && !appState.textToSpeech.iosUnlocked) {
+    appState.textToSpeech.unlockIOSAudio();
+  }
+
   // Don't start if already processing
   if (appState.isProcessing) {
     console.log('Already processing, ignoring press start');
