@@ -11,7 +11,9 @@ const appState = {
   speechRecognition: null,
   textToSpeech: null,
   spaceKeyPressed: false,  // Track if space is currently held down
-  recordingRequested: false  // Track if we've requested recording (even if not started yet)
+  recordingRequested: false,  // Track if we've requested recording (even if not started yet)
+  pressStartTime: null,  // Track when press started (for detecting hold vs toggle)
+  isHoldMode: false  // Track if user is in hold-to-talk mode
 };
 
 // DOM elements
@@ -50,7 +52,7 @@ function initializeApp() {
   setupKeyboardControls();
 
   console.log('App initialized successfully');
-  updateStatus('Ready - Press SPACE or click button');
+  updateStatus('Ready - Tap to toggle or hold to talk');
 }
 
 /**
@@ -123,10 +125,38 @@ function setupSpeechRecognitionCallbacks() {
  * Setup push-to-talk button event handlers
  */
 function setupPushToTalkButton() {
-  // Click to toggle (simpler behavior)
-  elements.pushToTalkButton.addEventListener('click', () => {
-    console.log('>>> BUTTON clicked');
-    handleTalkToggle();
+  // Support both toggle and hold modes
+  elements.pushToTalkButton.addEventListener('mousedown', (e) => {
+    console.log('>>> BUTTON mousedown');
+    e.preventDefault();
+    handlePressStart('button');
+  });
+
+  elements.pushToTalkButton.addEventListener('mouseup', (e) => {
+    console.log('>>> BUTTON mouseup');
+    e.preventDefault();
+    handlePressEnd('button');
+  });
+
+  elements.pushToTalkButton.addEventListener('mouseleave', (e) => {
+    console.log('>>> BUTTON mouseleave');
+    // If they're holding and mouse leaves, treat it as release
+    if (appState.isHoldMode) {
+      handlePressEnd('button');
+    }
+  });
+
+  // Touch support for mobile
+  elements.pushToTalkButton.addEventListener('touchstart', (e) => {
+    console.log('>>> BUTTON touchstart');
+    e.preventDefault();
+    handlePressStart('button');
+  });
+
+  elements.pushToTalkButton.addEventListener('touchend', (e) => {
+    console.log('>>> BUTTON touchend');
+    e.preventDefault();
+    handlePressEnd('button');
   });
 }
 
@@ -148,9 +178,7 @@ function setupKeyboardControls() {
       }
 
       appState.spaceKeyPressed = true;
-
-      // Toggle behavior - same as button
-      handleTalkToggle();
+      handlePressStart('space');
     }
   });
 
@@ -160,37 +188,45 @@ function setupKeyboardControls() {
       console.log('>>> SPACE key UP detected');
       e.preventDefault();
 
-      // Just reset the flag, don't trigger any action
-      appState.spaceKeyPressed = false;
+      if (appState.spaceKeyPressed) {
+        appState.spaceKeyPressed = false;
+        handlePressEnd('space');
+      }
     }
   });
 }
 
 /**
- * Handle start of talk (button/key pressed)
+ * Handle press start (button/key pressed down)
+ * Supports both toggle and hold modes
  */
-function handleTalkStart() {
-  console.log('=== handleTalkStart called ===');
+function handlePressStart(source) {
+  console.log('=== handlePressStart called ===', 'source:', source);
   console.log('appState.isProcessing:', appState.isProcessing);
   console.log('appState.isListening:', appState.isListening);
   console.log('appState.recordingRequested:', appState.recordingRequested);
 
   // Don't start if already processing
   if (appState.isProcessing) {
-    console.log('Already processing, ignoring talk start');
+    console.log('Already processing, ignoring press start');
     return;
   }
 
-  // Don't start if we've already requested recording
-  if (appState.recordingRequested) {
-    console.log('Recording already requested, ignoring talk start');
+  // Record when the press started
+  appState.pressStartTime = Date.now();
+
+  // If already recording, this might be a stop request (toggle mode)
+  if (appState.recordingRequested || appState.isListening) {
+    console.log('Already recording - will stop on release (toggle mode)');
     return;
   }
 
-  console.log('Calling speechRecognition.start()...');
-  appState.recordingRequested = true;  // Mark that we've requested recording
+  // Start recording
+  console.log('Starting recording...');
+  appState.recordingRequested = true;
+  appState.isHoldMode = false;  // We'll determine this on release
 
-  // Update UI immediately to show we're starting to listen
+  // Update UI immediately
   updateButtonState('listening');
   updateStatus('Starting...');
 
@@ -199,55 +235,54 @@ function handleTalkStart() {
 
   if (!started) {
     updateStatus('Failed to start listening');
-    appState.recordingRequested = false;  // Reset if start failed
+    appState.recordingRequested = false;
     updateButtonState('idle');
+    appState.pressStartTime = null;
   }
 }
 
 /**
- * Handle end of talk (button/key released)
+ * Handle press end (button/key released)
+ * Detects if this is toggle mode or hold mode
  */
-function handleTalkEnd() {
-  console.log('=== handleTalkEnd called ===');
+function handlePressEnd(source) {
+  console.log('=== handlePressEnd called ===', 'source:', source);
   console.log('appState.isListening:', appState.isListening);
   console.log('appState.isProcessing:', appState.isProcessing);
   console.log('appState.recordingRequested:', appState.recordingRequested);
 
-  // If we requested recording, we need to stop it (even if it hasn't fully started yet)
-  if (appState.recordingRequested || appState.isListening) {
-    console.log('Attempting to stop speech recognition...');
-    appState.speechRecognition.stop();
-    // Don't reset recordingRequested here - let the onEnd callback do it
-  } else {
-    console.log('No recording in progress or requested, nothing to stop');
-  }
-}
-
-/**
- * Toggle recording on/off (for button clicks)
- */
-function handleTalkToggle() {
-  console.log('=== handleTalkToggle called ===');
-  console.log('appState.recordingRequested:', appState.recordingRequested);
-  console.log('appState.isListening:', appState.isListening);
-  console.log('appState.isProcessing:', appState.isProcessing);
-
-  // If processing, ignore
-  if (appState.isProcessing) {
-    console.log('Processing, ignoring toggle');
+  // If we're not recording, nothing to do
+  if (!appState.recordingRequested && !appState.isListening) {
+    console.log('Not recording, nothing to do');
+    appState.pressStartTime = null;
     return;
   }
 
-  // If recording or requested, stop
-  if (appState.recordingRequested || appState.isListening) {
-    console.log('Currently recording, stopping...');
-    handleTalkEnd();
+  // Calculate hold duration
+  const holdDuration = appState.pressStartTime ? Date.now() - appState.pressStartTime : 0;
+  console.log('Hold duration:', holdDuration, 'ms');
+
+  // Determine mode based on hold duration
+  // If held for more than 300ms, it's hold mode (stop on release)
+  // If released quickly (< 300ms), it's toggle mode (don't stop, wait for next press)
+  const HOLD_MODE_THRESHOLD = 300; // milliseconds
+
+  if (holdDuration >= HOLD_MODE_THRESHOLD) {
+    // HOLD MODE: User held the button/key, stop recording on release
+    console.log('Hold mode detected - stopping recording');
+    appState.isHoldMode = true;
+    appState.speechRecognition.stop();
   } else {
-    // Otherwise, start
-    console.log('Not recording, starting...');
-    handleTalkStart();
+    // TOGGLE MODE: Quick tap, recording continues until next press
+    console.log('Toggle mode detected - recording continues');
+    appState.isHoldMode = false;
+    // Don't stop - user needs to press again to stop
   }
+
+  // Reset press start time
+  appState.pressStartTime = null;
 }
+
 
 /**
  * Process user message and get Claude's response
@@ -354,9 +389,11 @@ function updateStatus(message) {
 function resetToIdle() {
   appState.isProcessing = false;
   appState.isListening = false;
-  appState.recordingRequested = false;  // Reset recording request
+  appState.recordingRequested = false;
+  appState.pressStartTime = null;
+  appState.isHoldMode = false;
   updateButtonState('idle');
-  updateStatus('Ready - Press SPACE or click button');
+  updateStatus('Ready - Tap to toggle or hold to talk');
 }
 
 /**
