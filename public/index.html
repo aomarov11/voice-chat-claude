@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Chat with Claude</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Voice Chat with Claude</h1>
+            <p class="subtitle">Press SPACE or click button to start/stop</p>
+        </header>
+
+        <!-- Conversation Container -->
+        <main class="conversation-container" id="conversationContainer">
+            <div class="welcome-message">
+                <p>Welcome! Press SPACE or click the button to start recording.</p>
+                <p style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">Press again to stop and send your message.</p>
+            </div>
+        </main>
+
+        <!-- Controls Section -->
+        <div class="controls">
+            <!-- Status Indicator -->
+            <div class="status" id="status">
+                <span class="status-text">Ready</span>
+            </div>
+
+            <!-- Push-to-Talk Button -->
+            <button
+                class="push-to-talk-button"
+                id="pushToTalkButton"
+                aria-label="Push to talk"
+            >
+                <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+                <span class="button-text">Click or SPACE to Toggle</span>
+            </button>
+
+            <!-- Browser Compatibility Warning -->
+            <div class="compatibility-warning" id="compatibilityWarning" style="display: none;">
+                <p>Your browser doesn't support Web Speech API. Please use Chrome, Edge, or Safari.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner (hidden by default) -->
+    <div class="loading-spinner" id="loadingSpinner" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/speechRecognition.js"></script>
+    <script src="js/textToSpeech.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
