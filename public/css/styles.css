@@ -179,6 +179,100 @@ html {
   color: white;
 }
 
+/* Silent Mode Toggle */
+.silent-mode-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.silent-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background-color: white;
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+}
+
+.silent-mode-label:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.silent-mode-label.active {
+  background-color: #FFF3CD;
+  border: 2px solid var(--warning-color);
+}
+
+.silent-mode-checkbox {
+  display: none;
+}
+
+.silent-mode-slider {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background-color: #ccc;
+  border-radius: 24px;
+  transition: background-color 0.3s ease;
+}
+
+.silent-mode-slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.silent-mode-checkbox:checked + .silent-mode-slider {
+  background-color: var(--warning-color);
+}
+
+.silent-mode-checkbox:checked + .silent-mode-slider::before {
+  transform: translateX(20px);
+}
+
+.silent-mode-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.icon-sound,
+.icon-mute {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-sound {
+  display: inline;
+}
+
+.icon-mute {
+  display: none;
+}
+
+.silent-mode-label.active .icon-sound {
+  display: none;
+}
+
+.silent-mode-label.active .icon-mute {
+  display: inline;
+  color: var(--warning-color);
+}
+
 /* Push-to-Talk Button */
 .push-to-talk-button {
   width: 120px;
@@ -357,6 +451,35 @@ html {
   .status {
     font-size: 0.85rem;
     padding: 6px 16px;
+  }
+
+  .silent-mode-label {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+
+  .silent-mode-slider {
+    width: 38px;
+    height: 20px;
+  }
+
+  .silent-mode-slider::before {
+    width: 14px;
+    height: 14px;
+  }
+
+  .silent-mode-checkbox:checked + .silent-mode-slider::before {
+    transform: translateX(18px);
+  }
+
+  .silent-mode-text {
+    font-size: 0.8rem;
+  }
+
+  .icon-sound,
+  .icon-mute {
+    width: 18px;
+    height: 18px;
   }
 }
 

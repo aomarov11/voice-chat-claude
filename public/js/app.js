@@ -14,7 +14,8 @@ const appState = {
   recordingRequested: false,  // Track if we've requested recording (even if not started yet)
   pressStartTime: null,  // Track when press started (for detecting hold vs toggle)
   isHoldMode: false,  // Track if user is in hold-to-talk mode
-  shouldStopOnRelease: false  // Track if we should stop on next release (for toggle mode)
+  shouldStopOnRelease: false,  // Track if we should stop on next release (for toggle mode)
+  silentMode: false  // Track if silent mode is enabled (text only, no voice output)
 };
 
 // DOM elements
@@ -23,7 +24,8 @@ const elements = {
   conversationContainer: document.getElementById('conversationContainer'),
   status: document.getElementById('status'),
   compatibilityWarning: document.getElementById('compatibilityWarning'),
-  loadingSpinner: document.getElementById('loadingSpinner')
+  loadingSpinner: document.getElementById('loadingSpinner'),
+  silentModeToggle: document.getElementById('silentModeToggle')
 };
 
 /**
@@ -53,6 +55,9 @@ function initializeApp() {
 
   // Setup keyboard controls
   setupKeyboardControls();
+
+  // Setup silent mode toggle
+  setupSilentModeToggle();
 
   // Log that button is ready
   console.log('Push-to-talk button element:', elements.pushToTalkButton);
@@ -364,8 +369,12 @@ async function processUserMessage(message) {
     // Display message
     addMessageToUI('assistant', reply);
 
-    // Speak the response
-    appState.textToSpeech.speak(reply);
+    // Speak the response only if silent mode is OFF
+    if (!appState.silentMode) {
+      appState.textToSpeech.speak(reply);
+    } else {
+      console.log('Silent mode enabled - skipping text-to-speech');
+    }
 
     updateStatus('Ready');
   } catch (error) {
@@ -469,6 +478,54 @@ function scrollToBottom() {
 function showCompatibilityWarning() {
   elements.compatibilityWarning.style.display = 'block';
   updateStatus('Browser not supported');
+}
+
+/**
+ * Setup silent mode toggle
+ */
+function setupSilentModeToggle() {
+  console.log('Setting up silent mode toggle...');
+
+  // Load saved preference from localStorage
+  const savedSilentMode = localStorage.getItem('silentMode');
+  if (savedSilentMode !== null) {
+    appState.silentMode = savedSilentMode === 'true';
+  }
+
+  // Update toggle UI to match state
+  if (elements.silentModeToggle) {
+    elements.silentModeToggle.checked = appState.silentMode;
+    updateSilentModeUI();
+
+    // Add change event listener
+    elements.silentModeToggle.addEventListener('change', () => {
+      appState.silentMode = elements.silentModeToggle.checked;
+
+      // Save preference
+      localStorage.setItem('silentMode', appState.silentMode);
+
+      // Update UI
+      updateSilentModeUI();
+
+      console.log('Silent mode:', appState.silentMode ? 'ON (text only)' : 'OFF (voice enabled)');
+    });
+  }
+
+  console.log('Silent mode initialized:', appState.silentMode);
+}
+
+/**
+ * Update UI based on silent mode state
+ */
+function updateSilentModeUI() {
+  const label = document.querySelector('.silent-mode-label');
+  if (label) {
+    if (appState.silentMode) {
+      label.classList.add('active');
+    } else {
+      label.classList.remove('active');
+    }
+  }
 }
 
 // Initialize app when DOM is ready
