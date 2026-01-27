@@ -42,14 +42,20 @@ A voice-enabled web application where you can have natural conversations with Cl
    cp .env.example .env
    ```
 
-4. **Add your Claude API key**
+4. **Configure environment variables**
 
-   Edit the `.env` file and add your API key:
+   Edit the `.env` file and add your settings:
    ```
    CLAUDE_API_KEY=your_actual_api_key_here
    PORT=3000
    NODE_ENV=development
+
+   # Authentication (protect your app from unauthorized access)
+   AUTH_USERNAME=admin
+   AUTH_PASSWORD=your_secure_password_here
    ```
+
+   **Security Note**: Change `AUTH_PASSWORD` to a strong password. Without authentication, anyone can use your Claude API tokens!
 
 ## Running the Application
 

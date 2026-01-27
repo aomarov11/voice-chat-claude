@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const path = require('path');
 const apiRoutes = require('./routes/api');
 const errorHandler = require('./middleware/errorHandler');
+const basicAuth = require('./middleware/auth');
 
 // Initialize Express app
 const app = express();
@@ -28,6 +29,9 @@ app.use(cors());
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Authentication middleware (protects all routes)
+app.use(basicAuth);
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
