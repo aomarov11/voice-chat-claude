@@ -138,70 +138,82 @@ function setupSpeechRecognitionCallbacks() {
  */
 function setupPushToTalkButton() {
   console.log('Setting up push-to-talk button event listeners...');
+  console.log('Button element:', elements.pushToTalkButton);
+  console.log('Button computed style pointer-events:', window.getComputedStyle(elements.pushToTalkButton).pointerEvents);
 
-  // Prevent default button behavior
+  // Track if we've already handled the press in this cycle
+  let handledPress = false;
+
+  // Simpler approach: just use click for Arc compatibility
   elements.pushToTalkButton.addEventListener('click', (e) => {
-    console.log('>>> BUTTON click event fired (this is prevented, using mousedown/up instead)');
-    e.preventDefault();
-  });
-
-  // Support both toggle and hold modes
-  elements.pushToTalkButton.addEventListener('mousedown', (e) => {
-    console.log('>>> BUTTON mousedown');
+    console.log('>>> BUTTON click event fired');
     e.preventDefault();
     e.stopPropagation();
-    handlePressStart('button');
-  });
+
+    // Toggle behavior on click
+    if (appState.recordingRequested || appState.isListening) {
+      console.log('Click detected while recording - stopping');
+      handlePressEnd('button-click');
+    } else {
+      console.log('Click detected while idle - starting');
+      handlePressStart('button-click');
+    }
+  }, { passive: false, capture: false });
+
+  // Also keep mousedown/up for hold mode
+  elements.pushToTalkButton.addEventListener('mousedown', (e) => {
+    console.log('>>> BUTTON mousedown');
+    if (handledPress) return;
+    handledPress = true;
+    e.preventDefault();
+    e.stopPropagation();
+    handlePressStart('button-mouse');
+  }, { passive: false });
 
   elements.pushToTalkButton.addEventListener('mouseup', (e) => {
     console.log('>>> BUTTON mouseup');
+    if (!handledPress) return;
+    handledPress = false;
     e.preventDefault();
     e.stopPropagation();
-    handlePressEnd('button');
-  });
+    handlePressEnd('button-mouse');
+  }, { passive: false });
 
   elements.pushToTalkButton.addEventListener('mouseleave', (e) => {
     console.log('>>> BUTTON mouseleave');
-    // If they're holding and mouse leaves, treat it as release
-    if (appState.isHoldMode || appState.recordingRequested) {
-      handlePressEnd('button');
+    if (handledPress) {
+      handledPress = false;
+      if (appState.isHoldMode || appState.recordingRequested) {
+        handlePressEnd('button-mouse');
+      }
     }
   });
 
-  // Pointer events (more modern, works in more browsers including Arc)
+  // Pointer events (Arc might use these)
   elements.pushToTalkButton.addEventListener('pointerdown', (e) => {
-    console.log('>>> BUTTON pointerdown');
-    e.preventDefault();
-    e.stopPropagation();
-    handlePressStart('button');
-  });
+    console.log('>>> BUTTON pointerdown', 'pointerType:', e.pointerType);
+  }, { passive: false });
 
   elements.pushToTalkButton.addEventListener('pointerup', (e) => {
-    console.log('>>> BUTTON pointerup');
-    e.preventDefault();
-    e.stopPropagation();
-    handlePressEnd('button');
-  });
+    console.log('>>> BUTTON pointerup', 'pointerType:', e.pointerType);
+  }, { passive: false });
 
   // Touch support for mobile
   elements.pushToTalkButton.addEventListener('touchstart', (e) => {
     console.log('>>> BUTTON touchstart');
+    if (handledPress) return;
+    handledPress = true;
     e.preventDefault();
-    handlePressStart('button');
-  });
+    handlePressStart('button-touch');
+  }, { passive: false });
 
   elements.pushToTalkButton.addEventListener('touchend', (e) => {
     console.log('>>> BUTTON touchend');
+    if (!handledPress) return;
+    handledPress = false;
     e.preventDefault();
-    handlePressEnd('button');
-  });
-
-  // Debug: Log ALL events on the button
-  ['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'touchstart', 'touchend'].forEach(eventType => {
-    elements.pushToTalkButton.addEventListener(eventType, () => {
-      console.log(`[DEBUG] Button ${eventType} event fired`);
-    }, { passive: false });
-  });
+    handlePressEnd('button-touch');
+  }, { passive: false });
 
   console.log('Button event listeners set up successfully');
 }
@@ -210,12 +222,22 @@ function setupPushToTalkButton() {
  * Setup keyboard controls (SPACE bar)
  */
 function setupKeyboardControls() {
+  console.log('Setting up keyboard controls...');
+
+  // Test if we can capture keyboard events
+  window.addEventListener('keydown', (e) => {
+    console.log('Window keydown:', e.code, e.key, e.keyCode);
+  }, { once: true });
+
   document.addEventListener('keydown', (e) => {
+    console.log('>>> Document keydown:', 'code:', e.code, 'key:', e.key, 'keyCode:', e.keyCode);
+
     // Only respond to SPACE bar
-    if (e.code === 'Space' || e.keyCode === 32) {
+    if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
       console.log('>>> SPACE key DOWN detected');
       // Prevent default space behavior (page scroll)
       e.preventDefault();
+      e.stopPropagation();
 
       // Prevent repeated keydown events when holding the key
       if (appState.spaceKeyPressed) {
@@ -223,23 +245,30 @@ function setupKeyboardControls() {
         return;
       }
 
+      console.log('Processing SPACE keydown...');
       appState.spaceKeyPressed = true;
       handlePressStart('space');
     }
-  });
+  }, { passive: false, capture: false });
 
   document.addEventListener('keyup', (e) => {
+    console.log('>>> Document keyup:', 'code:', e.code, 'key:', e.key, 'keyCode:', e.keyCode);
+
     // Only respond to SPACE bar
-    if (e.code === 'Space' || e.keyCode === 32) {
+    if (e.code === 'Space' || e.key === ' ' || e.keyCode === 32) {
       console.log('>>> SPACE key UP detected');
       e.preventDefault();
+      e.stopPropagation();
 
       if (appState.spaceKeyPressed) {
+        console.log('Processing SPACE keyup...');
         appState.spaceKeyPressed = false;
         handlePressEnd('space');
       }
     }
-  });
+  }, { passive: false, capture: false });
+
+  console.log('Keyboard controls set up successfully');
 }
 
 /**
