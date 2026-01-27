@@ -25,8 +25,56 @@ const elements = {
   status: document.getElementById('status'),
   compatibilityWarning: document.getElementById('compatibilityWarning'),
   loadingSpinner: document.getElementById('loadingSpinner'),
-  silentModeToggle: document.getElementById('silentModeToggle')
+  silentModeToggle: document.getElementById('silentModeToggle'),
+  debugLog: document.getElementById('debugLog'),
+  debugLogContent: document.getElementById('debugLogContent'),
+  debugShowBtn: document.getElementById('debugShowBtn')
 };
+
+/**
+ * Debug logging function - logs to console AND visible UI
+ */
+function debugLog(message, type = 'info') {
+  const timestamp = new Date().toLocaleTimeString();
+  const fullMessage = `[${timestamp}] ${message}`;
+
+  // Log to console with appropriate method
+  switch(type) {
+    case 'error':
+      console.error(fullMessage);
+      break;
+    case 'warning':
+      console.warn(fullMessage);
+      break;
+    case 'success':
+      console.log('✅', fullMessage);
+      break;
+    default:
+      console.log(fullMessage);
+  }
+
+  // Log to visible UI
+  if (elements.debugLogContent) {
+    const entry = document.createElement('div');
+    entry.className = `debug-log-entry ${type}`;
+    entry.textContent = fullMessage;
+    elements.debugLogContent.appendChild(entry);
+
+    // Auto-scroll to bottom
+    elements.debugLogContent.scrollTop = elements.debugLogContent.scrollHeight;
+
+    // Keep only last 50 entries
+    const entries = elements.debugLogContent.children;
+    if (entries.length > 50) {
+      elements.debugLogContent.removeChild(entries[0]);
+    }
+
+    // Auto-show debug log
+    if (elements.debugLog) {
+      elements.debugLog.style.display = 'block';
+    }
+  }
+}
 
 /**
  * Initialize the application
@@ -59,11 +107,15 @@ function initializeApp() {
   // Setup silent mode toggle
   setupSilentModeToggle();
 
+  // Setup debug log controls
+  setupDebugLog();
+
   // Log that button is ready
   console.log('Push-to-talk button element:', elements.pushToTalkButton);
   console.log('Button disabled:', elements.pushToTalkButton.disabled);
 
   console.log('App initialized successfully');
+  debugLog('🚀 App initialized successfully - ready to record', 'success');
   updateStatus('Ready - Tap to toggle or hold to talk');
 }
 
@@ -73,7 +125,7 @@ function initializeApp() {
 function setupSpeechRecognitionCallbacks() {
   // On speech recognition start
   appState.speechRecognition.onStart = () => {
-    console.log('Listening started');
+    debugLog('✅ Listening started successfully', 'success');
     appState.isListening = true;
     updateButtonState('listening');
     updateStatus('Listening...');
@@ -81,10 +133,11 @@ function setupSpeechRecognitionCallbacks() {
 
   // On speech recognition result
   appState.speechRecognition.onResult = async (transcript, confidence) => {
-    console.log('Got transcript:', transcript);
+    debugLog(`📝 Got transcript: "${transcript}" (confidence: ${confidence})`, 'success');
 
     // Validate transcript
     if (!transcript || transcript.trim() === '') {
+      debugLog('⚠️ Empty transcript received', 'warning');
       updateStatus('No speech detected. Try again.');
       resetToIdle();
       return;
@@ -103,22 +156,30 @@ function setupSpeechRecognitionCallbacks() {
 
   // On speech recognition error
   appState.speechRecognition.onError = (error) => {
-    console.error('Recognition error:', error);
+    debugLog(`❌ Recognition error: ${error}`, 'error');
     appState.recordingRequested = false;  // Reset recording request on error
 
     let errorMessage = 'Error: ';
     switch (error) {
       case 'no-speech':
-        errorMessage += 'No speech detected';
+        errorMessage += 'No speech detected - speak immediately after pressing';
+        debugLog('⚠️ No speech detected - you need to speak within a few seconds of pressing', 'warning');
         break;
       case 'audio-capture':
         errorMessage += 'No microphone found';
+        debugLog('❌ No microphone found or accessible', 'error');
         break;
       case 'not-allowed':
         errorMessage += 'Microphone permission denied';
+        debugLog('❌ Microphone permission denied - check browser settings', 'error');
+        break;
+      case 'aborted':
+        errorMessage += 'Recording aborted';
+        debugLog('⚠️ Recording was aborted (stopped too quickly?)', 'warning');
         break;
       default:
         errorMessage += 'Speech recognition failed';
+        debugLog(`❌ Unknown error: ${error}`, 'error');
     }
 
     updateStatus(errorMessage);
@@ -127,7 +188,7 @@ function setupSpeechRecognitionCallbacks() {
 
   // On speech recognition end
   appState.speechRecognition.onEnd = () => {
-    console.log('Listening ended');
+    debugLog('🛑 Listening ended', 'info');
     appState.isListening = false;
     appState.recordingRequested = false;  // Reset the recording request flag
   };
@@ -276,10 +337,8 @@ function setupKeyboardControls() {
  * Supports both toggle and hold modes
  */
 async function handlePressStart(source) {
-  console.log('=== handlePressStart called ===', 'source:', source);
-  console.log('appState.isProcessing:', appState.isProcessing);
-  console.log('appState.isListening:', appState.isListening);
-  console.log('appState.recordingRequested:', appState.recordingRequested);
+  debugLog(`🎙️ Press START from ${source}`, 'info');
+  debugLog(`State: processing=${appState.isProcessing}, listening=${appState.isListening}, requested=${appState.recordingRequested}`, 'info');
 
   // Unlock iOS audio on first user interaction
   if (appState.textToSpeech && !appState.textToSpeech.iosUnlocked) {
@@ -288,7 +347,7 @@ async function handlePressStart(source) {
 
   // Don't start if already processing
   if (appState.isProcessing) {
-    console.log('Already processing, ignoring press start');
+    debugLog('⚠️ Already processing, ignoring press', 'warning');
     return;
   }
 
@@ -297,13 +356,13 @@ async function handlePressStart(source) {
 
   // If already recording, mark to stop on release (toggle mode - second tap)
   if (appState.recordingRequested || appState.isListening) {
-    console.log('Already recording - marking to stop on release (toggle mode)');
+    debugLog('🔄 Already recording - will stop on release (toggle mode)', 'info');
     appState.shouldStopOnRelease = true;
     return;
   }
 
   // Start recording (toggle mode - first tap)
-  console.log('Starting recording...');
+  debugLog('▶️ Starting recording...', 'info');
   appState.recordingRequested = true;
   appState.isHoldMode = false;
   appState.shouldStopOnRelease = false;
@@ -313,14 +372,16 @@ async function handlePressStart(source) {
   updateStatus('Requesting microphone...');
 
   const started = await appState.speechRecognition.start();
-  console.log('start() returned:', started);
+  debugLog(`Recognition start returned: ${started}`, started ? 'success' : 'error');
 
   if (!started) {
+    debugLog('❌ Failed to start recognition', 'error');
     updateStatus('Failed to start - check microphone');
     appState.recordingRequested = false;
     updateButtonState('idle');
     appState.pressStartTime = null;
   } else {
+    debugLog('✅ Recognition started - speak now!', 'success');
     updateStatus('Listening - speak now!');
   }
 }
@@ -330,15 +391,12 @@ async function handlePressStart(source) {
  * Detects if this is toggle mode or hold mode
  */
 function handlePressEnd(source) {
-  console.log('=== handlePressEnd called ===', 'source:', source);
-  console.log('appState.isListening:', appState.isListening);
-  console.log('appState.isProcessing:', appState.isProcessing);
-  console.log('appState.recordingRequested:', appState.recordingRequested);
-  console.log('appState.shouldStopOnRelease:', appState.shouldStopOnRelease);
+  debugLog(`🎙️ Press END from ${source}`, 'info');
+  debugLog(`State: listening=${appState.isListening}, requested=${appState.recordingRequested}, shouldStop=${appState.shouldStopOnRelease}`, 'info');
 
   // If we're not recording, nothing to do
   if (!appState.recordingRequested && !appState.isListening) {
-    console.log('Not recording, nothing to do');
+    debugLog('⚠️ Not recording, nothing to stop', 'warning');
     appState.pressStartTime = null;
     appState.shouldStopOnRelease = false;
     return;
@@ -346,7 +404,7 @@ function handlePressEnd(source) {
 
   // If marked to stop (toggle mode - second tap), stop immediately
   if (appState.shouldStopOnRelease) {
-    console.log('Toggle mode - second tap - stopping recording');
+    debugLog('⏹️ Toggle mode - second tap - stopping recording', 'info');
     appState.speechRecognition.stop();
     appState.shouldStopOnRelease = false;
     appState.pressStartTime = null;
@@ -355,7 +413,7 @@ function handlePressEnd(source) {
 
   // Calculate hold duration
   const holdDuration = appState.pressStartTime ? Date.now() - appState.pressStartTime : 0;
-  console.log('Hold duration:', holdDuration, 'ms');
+  debugLog(`⏱️ Hold duration: ${holdDuration}ms`, 'info');
 
   // Determine mode based on hold duration
   // If held for more than 300ms, it's hold mode (stop on release)
@@ -364,12 +422,12 @@ function handlePressEnd(source) {
 
   if (holdDuration >= HOLD_MODE_THRESHOLD) {
     // HOLD MODE: User held the button/key, stop recording on release
-    console.log('Hold mode detected - stopping recording');
+    debugLog('⏹️ Hold mode detected - stopping recording', 'info');
     appState.isHoldMode = true;
     appState.speechRecognition.stop();
   } else {
     // TOGGLE MODE: Quick tap (first tap), recording continues until next press
-    console.log('Toggle mode - first tap - recording continues');
+    debugLog('🔄 Toggle mode - first tap - recording continues', 'info');
     appState.isHoldMode = false;
     // Don't stop - user needs to press again to stop
   }
@@ -557,6 +615,24 @@ function updateSilentModeUI() {
       label.classList.remove('active');
     }
   }
+}
+
+/**
+ * Setup debug log controls
+ */
+function setupDebugLog() {
+  console.log('Setting up debug log...');
+
+  // Show debug log button
+  if (elements.debugShowBtn) {
+    elements.debugShowBtn.addEventListener('click', () => {
+      if (elements.debugLog) {
+        elements.debugLog.style.display = 'block';
+      }
+    });
+  }
+
+  console.log('Debug log initialized');
 }
 
 // Initialize app when DOM is ready
