@@ -54,20 +54,21 @@ html {
 /* Header */
 .header {
   text-align: center;
-  padding: 20px 0;
+  padding: 15px 0 10px;
   border-bottom: 2px solid #e0e0e0;
+  flex-shrink: 0;
 }
 
 .header h1 {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   color: var(--primary-color);
 }
 
 .subtitle {
   color: #7f8c8d;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
 }
 
 /* Conversation Container */
@@ -150,10 +151,9 @@ html {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 0;
-  gap: 15px;
+  padding: 15px 0;
+  gap: 12px;
   border-top: 2px solid #e0e0e0;
-  min-height: 200px;
   flex-shrink: 0;
   background-color: var(--bg-color);
 }
@@ -351,95 +351,6 @@ html {
   box-shadow: var(--shadow);
 }
 
-/* Debug Log */
-.debug-log {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 400px;
-  max-height: 300px;
-  background: #1e1e1e;
-  color: #00ff00;
-  font-family: 'Courier New', monospace;
-  font-size: 0.75rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  overflow: hidden;
-}
-
-.debug-log-header {
-  background: #2d2d2d;
-  padding: 8px 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #00ff00;
-}
-
-.debug-log-header strong {
-  color: #00ff00;
-}
-
-.debug-toggle {
-  background: #ff4444;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.7rem;
-}
-
-.debug-log-content {
-  padding: 8px;
-  max-height: 250px;
-  overflow-y: auto;
-  line-height: 1.4;
-}
-
-.debug-log-entry {
-  margin-bottom: 4px;
-  padding: 2px 0;
-  border-bottom: 1px solid #333;
-}
-
-.debug-log-entry.error {
-  color: #ff4444;
-}
-
-.debug-log-entry.warning {
-  color: #ffaa00;
-}
-
-.debug-log-entry.success {
-  color: #00ff00;
-}
-
-.debug-log-entry.info {
-  color: #00aaff;
-}
-
-.debug-show-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: #2d2d2d;
-  color: #00ff00;
-  border: 2px solid #00ff00;
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  z-index: 9998;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.debug-show-btn:hover {
-  background: #00ff00;
-  color: #1e1e1e;
-}
-
 /* Loading Spinner */
 .loading-spinner {
   position: fixed;
@@ -491,64 +402,76 @@ html {
   }
 
   .container {
-    padding: 10px;
-    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    padding: 8px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
   }
 
   .header {
-    padding: 10px 0;
+    padding: 8px 0 6px;
   }
 
   .header h1 {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+    margin-bottom: 3px;
   }
 
   .subtitle {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
+  }
+
+  .welcome-message {
+    padding: 20px 15px;
+    font-size: 0.95rem;
+  }
+
+  .welcome-message p {
+    margin-top: 8px !important;
+    font-size: 0.85em !important;
   }
 
   .conversation-container {
-    margin: 10px 0;
-    padding: 10px 5px;
+    margin: 8px 0;
+    padding: 8px 5px;
   }
 
   .message-bubble {
     max-width: 85%;
     font-size: 0.95rem;
+    padding: 10px 14px;
   }
 
   .controls {
-    padding: 15px 0;
-    gap: 12px;
+    padding: 10px 0 12px;
+    gap: 10px;
   }
 
   .push-to-talk-button {
-    width: 90px;
-    height: 90px;
-    font-size: 0.75rem;
-  }
-
-  .mic-icon {
-    width: 32px;
-    height: 32px;
-  }
-
-  .button-text {
+    width: 85px;
+    height: 85px;
     font-size: 0.7rem;
   }
 
+  .mic-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .button-text {
+    font-size: 0.65rem;
+  }
+
   .status {
-    font-size: 0.85rem;
-    padding: 6px 16px;
+    font-size: 0.8rem;
+    padding: 5px 14px;
   }
 
   .silent-mode-label {
-    padding: 6px 12px;
-    font-size: 0.85rem;
+    padding: 5px 10px;
+    font-size: 0.8rem;
   }
 
   .silent-mode-slider {
-    width: 38px;
+    width: 36px;
     height: 20px;
   }
 
@@ -558,33 +481,55 @@ html {
   }
 
   .silent-mode-checkbox:checked + .silent-mode-slider::before {
-    transform: translateX(18px);
+    transform: translateX(16px);
   }
 
   .silent-mode-text {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
 
   .icon-sound,
   .icon-mute {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
+  }
+
+  .compatibility-warning {
+    padding: 10px 15px;
+    font-size: 0.85rem;
   }
 }
 
 /* Extra small screens */
 @media (max-width: 375px) {
+  .header h1 {
+    font-size: 1.25rem;
+  }
+
+  .subtitle {
+    font-size: 0.7rem;
+  }
+
   .push-to-talk-button {
-    width: 80px;
-    height: 80px;
+    width: 75px;
+    height: 75px;
   }
 
   .mic-icon {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
   }
 
   .button-text {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
+  }
+
+  .controls {
+    gap: 8px;
+  }
+
+  .message-bubble {
+    font-size: 0.9rem;
+    padding: 8px 12px;
   }
 }
