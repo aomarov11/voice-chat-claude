@@ -208,6 +208,7 @@ html {
 .silent-mode-label.active {
   background-color: #FFF3CD;
   border: 2px solid var(--warning-color);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.2);
 }
 
 .silent-mode-checkbox {

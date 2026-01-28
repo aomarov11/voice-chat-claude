@@ -406,15 +406,12 @@ async function processUserMessage(message) {
 
         if (!success) {
           console.error('❌ TTS failed to play audio');
-          alert('Audio playback failed. Check console for details or enable Silent Mode to use text-only.');
         }
       } catch (error) {
         console.error('❌ TTS error:', error);
-        alert('Audio error: ' + error.message);
       }
     } else {
       console.log('🔇 Silent mode is ENABLED - skipping text-to-speech');
-      alert('Silent mode is ON. Toggle it off to hear voice responses.');
     }
 
     updateStatus('Ready');
@@ -533,10 +530,20 @@ function setupSilentModeToggle() {
     appState.silentMode = savedSilentMode === 'true';
   }
 
+  console.log('🔊 Silent mode loaded from localStorage:', appState.silentMode);
+  console.log('📱 Silent mode state:', appState.silentMode ? 'ON (text only)' : 'OFF (voice enabled)');
+
   // Update toggle UI to match state
   if (elements.silentModeToggle) {
     elements.silentModeToggle.checked = appState.silentMode;
     updateSilentModeUI();
+
+    // Show alert if silent mode is ON at startup
+    if (appState.silentMode) {
+      setTimeout(() => {
+        alert('Silent Mode is ON. You will see text responses but not hear audio. Toggle Silent Mode OFF to enable voice responses.');
+      }, 500);
+    }
 
     // Add change event listener
     elements.silentModeToggle.addEventListener('change', () => {
@@ -548,7 +555,14 @@ function setupSilentModeToggle() {
       // Update UI
       updateSilentModeUI();
 
-      console.log('Silent mode:', appState.silentMode ? 'ON (text only)' : 'OFF (voice enabled)');
+      console.log('🔊 Silent mode changed:', appState.silentMode ? 'ON (text only)' : 'OFF (voice enabled)');
+
+      // Show user feedback
+      if (appState.silentMode) {
+        alert('Silent Mode enabled. You will see text but not hear audio.');
+      } else {
+        alert('Silent Mode disabled. You will now hear voice responses!');
+      }
     });
   }
 
