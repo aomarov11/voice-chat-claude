@@ -14,6 +14,7 @@ class TextToSpeechWrapper {
     this.synthesis = window.speechSynthesis;
     this.currentUtterance = null;
     this.iosUnlocked = false;
+    this.audioUnlocked = false; // Track if audio context is unlocked
 
     // Default configuration
     this.config = {
@@ -56,6 +57,76 @@ class TextToSpeechWrapper {
     this.synthesis.speak(utterance);
     this.iosUnlocked = true;
     console.log('iOS audio unlocked');
+  }
+
+  /**
+   * Unlock audio playback for mobile browsers
+   * Must be called during a user interaction (touch/click)
+   * This allows audio to play later without user interaction
+   */
+  async unlockAudioPlayback() {
+    if (this.audioUnlocked) {
+      console.log('Audio already unlocked');
+      return;
+    }
+
+    console.log('🔓 Unlocking audio playback...');
+
+    try {
+      // Create a silent audio blob (1 second of silence, WAV format)
+      const sampleRate = 22050;
+      const duration = 0.1; // 100ms of silence
+      const numSamples = sampleRate * duration;
+      const buffer = new ArrayBuffer(44 + numSamples * 2);
+      const view = new DataView(buffer);
+
+      // WAV header
+      const writeString = (offset, string) => {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      };
+
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + numSamples * 2, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, numSamples * 2, true);
+
+      // Write silence (zeros)
+      for (let i = 0; i < numSamples; i++) {
+        view.setInt16(44 + i * 2, 0, true);
+      }
+
+      // Create blob and audio element
+      const blob = new Blob([buffer], { type: 'audio/wav' });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.volume = 0.01; // Very quiet
+
+      // Play the silent audio to unlock the audio context
+      await audio.play();
+      console.log('✅ Audio playback unlocked successfully');
+
+      // Clean up
+      URL.revokeObjectURL(url);
+      this.audioUnlocked = true;
+
+      // Also unlock iOS speech synthesis
+      this.unlockIOSAudio();
+    } catch (error) {
+      console.error('❌ Failed to unlock audio:', error);
+      // Try iOS unlock as fallback
+      this.unlockIOSAudio();
+    }
   }
 
   /**
@@ -118,6 +189,8 @@ class TextToSpeechWrapper {
 
         // Play audio
         console.log('▶️ Playing audio...');
+        console.log('🔓 Audio unlocked:', this.audioUnlocked);
+
         try {
           await this.currentAudio.play();
           console.log('✅ Audio playback started successfully');
@@ -126,10 +199,12 @@ class TextToSpeechWrapper {
           console.error('❌ Audio.play() failed:', playError);
           console.error('Play error name:', playError.name);
           console.error('Play error message:', playError.message);
+          console.error('Was audio unlocked?', this.audioUnlocked);
 
           // Show user-friendly error on mobile
           if (playError.name === 'NotAllowedError') {
-            alert('Audio playback blocked. Please enable audio permissions or tap to hear responses.');
+            console.error('🚫 Audio blocked by browser autoplay policy');
+            alert('Audio playback blocked by browser. Try tapping the button again, or check browser audio settings.');
           }
 
           // Fall back to Web Speech API

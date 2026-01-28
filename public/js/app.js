@@ -303,9 +303,15 @@ function setupKeyboardControls() {
 async function handleMobileStart() {
   console.log('Mobile: Starting hold-to-talk');
 
-  // Unlock iOS audio on first user interaction
-  if (appState.textToSpeech && !appState.textToSpeech.iosUnlocked) {
-    appState.textToSpeech.unlockIOSAudio();
+  // CRITICAL: Unlock audio playback during user interaction
+  // This allows audio to play later when Claude responds
+  if (appState.textToSpeech) {
+    try {
+      await appState.textToSpeech.unlockAudioPlayback();
+      console.log('✅ Audio playback unlocked for this session');
+    } catch (error) {
+      console.warn('⚠️ Could not unlock audio:', error);
+    }
   }
 
   if (appState.isProcessing || appState.isListening) {
@@ -346,6 +352,16 @@ function handleMobileEnd() {
  */
 async function handleDesktopStart() {
   console.log('Desktop: Starting recording (toggle mode)');
+
+  // Unlock audio playback during user interaction
+  if (appState.textToSpeech) {
+    try {
+      await appState.textToSpeech.unlockAudioPlayback();
+      console.log('✅ Audio playback unlocked for this session');
+    } catch (error) {
+      console.warn('⚠️ Could not unlock audio:', error);
+    }
+  }
 
   if (appState.isProcessing) {
     return;
@@ -603,6 +619,9 @@ function setupTestAudioButton() {
     elements.testAudioBtn.textContent = 'Testing...';
 
     try {
+      // Unlock audio playback first
+      await appState.textToSpeech.unlockAudioPlayback();
+
       // Test with a simple message
       const testText = 'Audio test successful. You should hear this message.';
       console.log('🔊 Playing test audio:', testText);
