@@ -1,18 +1,16 @@
 /**
  * Text-to-Speech Wrapper
- * Handles text-to-speech functionality using Web Speech API
+ * Handles text-to-speech functionality using OpenAI TTS API
+ * Falls back to Web Speech API if needed
  */
 
 class TextToSpeechWrapper {
   constructor() {
-    // Check for Speech Synthesis support
-    if (!('speechSynthesis' in window)) {
-      this.supported = false;
-      console.error('Speech Synthesis is not supported in this browser');
-      return;
-    }
+    this.supported = true; // Always supported since we use OpenAI TTS
+    this.currentAudio = null;
+    this.useOpenAI = true; // Use OpenAI TTS by default
 
-    this.supported = true;
+    // Web Speech API fallback
     this.synthesis = window.speechSynthesis;
     this.currentUtterance = null;
     this.iosUnlocked = false;
@@ -25,13 +23,11 @@ class TextToSpeechWrapper {
       lang: 'en-US'
     };
 
-    // iOS/Safari specific: preload voices
-    if (typeof window !== 'undefined') {
-      // Load voices
+    // Web Speech API voices (fallback)
+    if (window.speechSynthesis) {
       this.voices = [];
       this.loadVoices();
 
-      // iOS requires voices to be loaded after onvoiceschanged event
       if (window.speechSynthesis.onvoiceschanged !== undefined) {
         window.speechSynthesis.onvoiceschanged = () => {
           this.loadVoices();
@@ -63,11 +59,12 @@ class TextToSpeechWrapper {
   }
 
   /**
-   * Speak the given text
+   * Speak the given text using OpenAI TTS API
    * @param {string} text - The text to speak
-   * @param {object} options - Optional configuration overrides
+   * @param {object} options - Optional configuration including language
+   * @returns {Promise<boolean>} - Success status
    */
-  speak(text, options = {}) {
+  async speak(text, options = {}) {
     if (!this.supported) {
       console.error('Speech synthesis not supported');
       return false;
@@ -78,16 +75,83 @@ class TextToSpeechWrapper {
       return false;
     }
 
+    // Cancel any ongoing speech
+    this.stop();
+
+    // Use OpenAI TTS API
+    if (this.useOpenAI) {
+      try {
+        console.log('🔊 Using OpenAI TTS API');
+        console.log('📝 Text:', text.substring(0, 100));
+        console.log('🌍 Language:', options.language);
+
+        // Get audio blob from API
+        const audioBlob = await API.textToSpeech(text, options.language || 'en');
+
+        console.log('✅ Received audio blob from server, size:', audioBlob.size);
+        console.log('📦 Blob type:', audioBlob.type);
+
+        // Create audio URL
+        const audioUrl = URL.createObjectURL(audioBlob);
+        console.log('🔗 Created audio URL:', audioUrl);
+
+        // Create audio element
+        this.currentAudio = new Audio(audioUrl);
+
+        // Event handlers
+        this.currentAudio.onplay = () => {
+          console.log('🎵 Speech started (OpenAI TTS)');
+        };
+
+        this.currentAudio.onended = () => {
+          console.log('✅ Speech ended (OpenAI TTS)');
+          URL.revokeObjectURL(audioUrl);
+          this.currentAudio = null;
+        };
+
+        this.currentAudio.onerror = (error) => {
+          console.error('❌ Audio playback error:', error);
+          console.error('Error details:', this.currentAudio.error);
+          URL.revokeObjectURL(audioUrl);
+          this.currentAudio = null;
+        };
+
+        // Play audio
+        console.log('▶️ Playing audio...');
+        await this.currentAudio.play();
+        console.log('✅ Audio playback started successfully');
+        return true;
+      } catch (error) {
+        console.error('❌ OpenAI TTS error:', error);
+        console.error('Error stack:', error.stack);
+        console.log('🔄 Falling back to Web Speech API');
+        // Fall back to Web Speech API
+        return this.speakWithWebSpeech(text, options);
+      }
+    } else {
+      // Use Web Speech API
+      return this.speakWithWebSpeech(text, options);
+    }
+  }
+
+  /**
+   * Speak using Web Speech API (fallback)
+   * @param {string} text - The text to speak
+   * @param {object} options - Optional configuration
+   * @returns {boolean} - Success status
+   */
+  speakWithWebSpeech(text, options = {}) {
+    if (!this.synthesis) {
+      console.error('Web Speech API not available');
+      return false;
+    }
+
     // Ensure iOS audio is unlocked
     if (!this.iosUnlocked) {
       this.unlockIOSAudio();
     }
 
-    // Cancel any ongoing speech
-    this.stop();
-
     // iOS/Safari sometimes needs a delay before speaking
-    // Also need to ensure synthesis is not paused
     if (this.synthesis.paused) {
       this.synthesis.resume();
     }
@@ -104,7 +168,7 @@ class TextToSpeechWrapper {
     this.currentUtterance.volume = options.volume || this.config.volume;
     this.currentUtterance.lang = options.lang || this.config.lang;
 
-    // Try to use a good voice on iOS
+    // Try to use a good voice
     if (this.voices.length > 0) {
       const preferredVoice = this.voices.find(voice =>
         voice.lang.startsWith('en') && !voice.name.includes('Google')
@@ -116,11 +180,11 @@ class TextToSpeechWrapper {
 
     // Event handlers
     this.currentUtterance.onstart = () => {
-      console.log('Speech started');
+      console.log('Speech started (Web Speech API)');
     };
 
     this.currentUtterance.onend = () => {
-      console.log('Speech ended');
+      console.log('Speech ended (Web Speech API)');
       this.currentUtterance = null;
     };
 
@@ -131,7 +195,6 @@ class TextToSpeechWrapper {
 
     // Speak the text
     try {
-      // Small delay for iOS (helps with reliability)
       setTimeout(() => {
         this.synthesis.speak(this.currentUtterance);
       }, 100);
@@ -151,8 +214,18 @@ class TextToSpeechWrapper {
     }
 
     try {
-      this.synthesis.cancel();
-      this.currentUtterance = null;
+      // Stop OpenAI TTS audio
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+        this.currentAudio = null;
+      }
+
+      // Stop Web Speech API
+      if (this.synthesis) {
+        this.synthesis.cancel();
+        this.currentUtterance = null;
+      }
     } catch (error) {
       console.error('Error stopping speech:', error);
     }
@@ -199,6 +272,18 @@ class TextToSpeechWrapper {
    * Check if currently speaking
    */
   isSpeaking() {
-    return this.supported && this.synthesis.speaking;
+    if (!this.supported) return false;
+
+    // Check OpenAI audio
+    if (this.currentAudio && !this.currentAudio.paused) {
+      return true;
+    }
+
+    // Check Web Speech API
+    if (this.synthesis && this.synthesis.speaking) {
+      return true;
+    }
+
+    return false;
   }
 }

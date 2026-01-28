@@ -16,7 +16,7 @@ const appState = {
   isHoldMode: false,  // Track if user is in hold-to-talk mode
   shouldStopOnRelease: false,  // Track if we should stop on next release (for toggle mode)
   silentMode: false,  // Track if silent mode is enabled (text only, no voice output)
-  networkErrorShown: false  // Track if we've shown the Arc browser network error alert
+  currentLanguage: 'en'  // Track detected language for TTS
 };
 
 // DOM elements
@@ -132,27 +132,55 @@ function setupSpeechRecognitionCallbacks() {
     updateStatus('Listening...');
   };
 
-  // On speech recognition result
-  appState.speechRecognition.onResult = async (transcript, confidence) => {
-    debugLog(`📝 Got transcript: "${transcript}" (confidence: ${confidence})`, 'success');
+  // On audio recording result (receives audio blob)
+  appState.speechRecognition.onResult = async (audioBlob) => {
+    debugLog(`📝 Got audio recording, size: ${audioBlob.size} bytes`, 'success');
 
-    // Validate transcript
-    if (!transcript || transcript.trim() === '') {
-      debugLog('⚠️ Empty transcript received', 'warning');
-      updateStatus('No speech detected. Try again.');
+    // Validate audio blob
+    if (!audioBlob || audioBlob.size === 0) {
+      debugLog('⚠️ Empty audio blob received', 'warning');
+      updateStatus('No audio captured. Try again.');
       resetToIdle();
       return;
     }
 
-    // Add user message to conversation
-    addMessageToUI('user', transcript);
-    appState.conversationHistory.push({
-      role: 'user',
-      content: transcript
-    });
+    // Update status
+    updateButtonState('processing');
+    updateStatus('Transcribing audio...');
+    debugLog('🔄 Sending audio to Whisper API for transcription', 'info');
 
-    // Process the message
-    await processUserMessage(transcript);
+    try {
+      // Send audio to transcription API (now returns {transcript, language})
+      const result = await API.transcribeAudio(audioBlob);
+
+      debugLog(`✅ Transcription successful: "${result.transcript}"`, 'success');
+      debugLog(`🌍 Detected language: ${result.language}`, 'info');
+
+      // Store detected language for TTS
+      appState.currentLanguage = result.language;
+
+      // Validate transcript
+      if (!result.transcript || result.transcript.trim() === '') {
+        debugLog('⚠️ Empty transcript received from Whisper', 'warning');
+        updateStatus('No speech detected. Try again.');
+        resetToIdle();
+        return;
+      }
+
+      // Add user message to conversation
+      addMessageToUI('user', result.transcript);
+      appState.conversationHistory.push({
+        role: 'user',
+        content: result.transcript
+      });
+
+      // Process the message with Claude
+      await processUserMessage(result.transcript);
+    } catch (error) {
+      debugLog(`❌ Transcription failed: ${error.message}`, 'error');
+      updateStatus(`Transcription error: ${error.message}`);
+      resetToIdle();
+    }
   };
 
   // On speech recognition error
@@ -162,33 +190,6 @@ function setupSpeechRecognitionCallbacks() {
 
     let errorMessage = 'Error: ';
     switch (error) {
-      case 'network':
-        errorMessage += 'Network error - Arc browser may be blocking speech API';
-        debugLog('❌ NETWORK ERROR - Speech API cannot connect to servers', 'error');
-        debugLog('🔧 This is a known Arc browser issue. Try:', 'warning');
-        debugLog('   1. Use Chrome/Safari instead (EASIEST)', 'warning');
-        debugLog('   2. Check Arc Settings → Privacy → Allow Google services', 'warning');
-        debugLog('   3. Disable Arc Shields for this site', 'warning');
-        debugLog('   4. Try in a regular Chrome window', 'warning');
-
-        // Show a more helpful status message
-        updateStatus('Arc browser blocking speech API - see debug log for fixes');
-
-        // Show alert on first network error
-        if (!appState.networkErrorShown) {
-          appState.networkErrorShown = true;
-          setTimeout(() => {
-            alert('⚠️ Arc Browser Issue Detected\n\n' +
-                  'Arc is blocking the Speech Recognition API from connecting to Google\'s servers.\n\n' +
-                  'Quick Fixes:\n' +
-                  '1. Use Chrome or Safari instead (recommended)\n' +
-                  '2. Check Arc Settings → Privacy → Allow Google services\n' +
-                  '3. Disable Arc Shields for this site\n' +
-                  '4. Try in Little Arc window (Cmd+Shift+N)\n\n' +
-                  'The app works perfectly in Chrome and Safari!');
-          }, 500);
-        }
-        break;
       case 'no-speech':
         errorMessage += 'No speech detected - speak immediately after pressing';
         debugLog('⚠️ No speech detected - you need to speak within a few seconds of pressing', 'warning');
@@ -488,7 +489,10 @@ async function processUserMessage(message) {
 
     // Speak the response only if silent mode is OFF
     if (!appState.silentMode) {
-      appState.textToSpeech.speak(reply);
+      // Pass the detected language to TTS
+      await appState.textToSpeech.speak(reply, {
+        language: appState.currentLanguage
+      });
     } else {
       console.log('Silent mode enabled - skipping text-to-speech');
     }

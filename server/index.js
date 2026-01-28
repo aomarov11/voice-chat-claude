@@ -18,7 +18,8 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      connectSrc: ["'self'"]
+      connectSrc: ["'self'"],
+      mediaSrc: ["'self'", "blob:"]  // Allow blob URLs for audio playback
     }
   }
 }));
