@@ -607,6 +607,13 @@ function setupTestAudioButton() {
 
   elements.testAudioBtn.addEventListener('click', async () => {
     console.log('🧪 Testing audio playback...');
+    console.log('🔍 Diagnostics:');
+    console.log('- Silent mode:', appState.silentMode);
+    console.log('- TTS object exists:', !!appState.textToSpeech);
+    console.log('- Is mobile:', appState.textToSpeech?.isMobile);
+    console.log('- Use OpenAI:', appState.textToSpeech?.useOpenAI);
+    console.log('- speechSynthesis exists:', !!window.speechSynthesis);
+    console.log('- Available voices:', window.speechSynthesis?.getVoices().length || 0);
 
     // Check silent mode
     if (appState.silentMode) {
@@ -622,24 +629,33 @@ function setupTestAudioButton() {
       // Unlock audio playback first
       await appState.textToSpeech.unlockAudioPlayback();
 
+      // Force load voices
+      if (window.speechSynthesis) {
+        const voices = window.speechSynthesis.getVoices();
+        console.log('📋 Voices:', voices.map(v => v.name).join(', '));
+      }
+
       // Test with a simple message
-      const testText = 'Audio test successful. You should hear this message.';
+      const testText = 'Audio test. You should hear this message.';
       console.log('🔊 Playing test audio:', testText);
 
       const success = await appState.textToSpeech.speak(testText, {
         language: 'en'
       });
 
+      console.log('🎯 Test result:', success);
+
       if (success) {
         console.log('✅ Test audio completed');
-        alert('Audio test completed! If you heard the message, audio is working.');
+        alert('Audio test completed! Did you hear the message?');
       } else {
         console.error('❌ Test audio failed');
-        alert('Audio test failed. Check console for details.');
+        alert('Audio test failed. Check console logs for details. Swipe down notification panel or use Safari Web Inspector.');
       }
     } catch (error) {
       console.error('❌ Test audio error:', error);
-      alert('Audio test error: ' + error.message);
+      console.error('Error stack:', error.stack);
+      alert('Audio test error: ' + error.message + '. Check console for details.');
     } finally {
       // Re-enable button
       elements.testAudioBtn.disabled = false;

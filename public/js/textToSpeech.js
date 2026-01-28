@@ -139,14 +139,21 @@ class TextToSpeechWrapper {
   }
 
   /**
-   * Speak the given text using OpenAI TTS API
+   * Speak the given text using OpenAI TTS API or Web Speech API
    * @param {string} text - The text to speak
    * @param {object} options - Optional configuration including language
    * @returns {Promise<boolean>} - Success status
    */
   async speak(text, options = {}) {
+    console.log('🔊 speak() called');
+    console.log('📱 Is mobile:', this.isMobile);
+    console.log('📝 Text length:', text.length);
+    console.log('🎵 Use OpenAI TTS:', this.useOpenAI);
+    console.log('🗣️ Web Speech available:', !!this.synthesis);
+
     if (!this.supported) {
       console.error('Speech synthesis not supported');
+      alert('Speech synthesis not supported on this device');
       return false;
     }
 
@@ -158,7 +165,13 @@ class TextToSpeechWrapper {
     // Cancel any ongoing speech
     this.stop();
 
-    // Use OpenAI TTS API
+    // Use Web Speech API on mobile
+    if (!this.useOpenAI) {
+      console.log('🗣️ Using Web Speech API (mobile mode)');
+      return this.speakWithWebSpeech(text, options);
+    }
+
+    // Use OpenAI TTS API on desktop
     if (this.useOpenAI) {
       try {
         console.log('🔊 Using OpenAI TTS API');
@@ -242,7 +255,8 @@ class TextToSpeechWrapper {
   speakWithWebSpeech(text, options = {}) {
     return new Promise((resolve) => {
       if (!this.synthesis) {
-        console.error('Web Speech API not available');
+        console.error('❌ Web Speech API not available');
+        alert('Web Speech API not supported on this browser');
         resolve(false);
         return;
       }
@@ -250,18 +264,36 @@ class TextToSpeechWrapper {
       console.log('🗣️ Using Web Speech API');
       console.log('📝 Text:', text.substring(0, 100));
       console.log('🌍 Language option:', options.language);
+      console.log('🎤 Available voices:', this.voices.length);
+
+      // Ensure voices are loaded
+      if (this.voices.length === 0) {
+        console.warn('⚠️ No voices loaded yet, attempting to load...');
+        this.loadVoices();
+
+        // If still no voices, this might fail
+        if (this.voices.length === 0) {
+          console.error('❌ No voices available');
+          alert('No speech voices available. Please check device settings.');
+          resolve(false);
+          return;
+        }
+      }
 
       // Ensure iOS audio is unlocked
       if (!this.iosUnlocked) {
+        console.log('🔓 Unlocking iOS audio...');
         this.unlockIOSAudio();
       }
 
       // iOS/Safari sometimes needs a delay before speaking
       if (this.synthesis.paused) {
+        console.log('▶️ Resuming paused synthesis');
         this.synthesis.resume();
       }
 
       // Cancel any queued speech
+      console.log('🛑 Canceling previous speech');
       this.synthesis.cancel();
 
       // Wait a bit for cancel to take effect
@@ -315,16 +347,29 @@ class TextToSpeechWrapper {
 
         this.currentUtterance.onerror = (event) => {
           console.error('❌ Speech error:', event.error);
+          console.error('Error event:', event);
           this.currentUtterance = null;
+          alert('Speech error: ' + event.error + '. Check console for details.');
           resolve(false);
         };
 
         // Speak the text
         try {
+          console.log('📢 Calling synthesis.speak()...');
           this.synthesis.speak(this.currentUtterance);
-          console.log('📢 Speech queued');
+          console.log('✅ Speech queued successfully');
+
+          // Check if speaking actually started
+          setTimeout(() => {
+            if (this.synthesis.speaking) {
+              console.log('✅ Confirmed: synthesis is speaking');
+            } else {
+              console.warn('⚠️ Warning: synthesis.speak() called but not speaking');
+            }
+          }, 100);
         } catch (error) {
-          console.error('❌ Error speaking text:', error);
+          console.error('❌ Error calling synthesis.speak():', error);
+          alert('Speech error: ' + error.message);
           resolve(false);
         }
       }, 50);
