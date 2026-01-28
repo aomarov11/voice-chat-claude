@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const fs = require('fs');
 const apiRoutes = require('./routes/api');
 const errorHandler = require('./middleware/errorHandler');
 const basicAuth = require('./middleware/auth');
@@ -10,6 +11,13 @@ const basicAuth = require('./middleware/auth');
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('Created uploads directory');
+}
 
 // Security middleware
 app.use(helmet({
