@@ -8,7 +8,16 @@ class TextToSpeechWrapper {
   constructor() {
     this.supported = true; // Always supported since we use OpenAI TTS
     this.currentAudio = null;
-    this.useOpenAI = true; // Use OpenAI TTS by default
+
+    // Detect mobile devices - use Web Speech API on mobile to avoid autoplay issues
+    this.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+                    ('ontouchstart' in window) ||
+                    (navigator.maxTouchPoints > 0);
+
+    // Use Web Speech API on mobile, Google Cloud TTS on desktop
+    this.useOpenAI = !this.isMobile;
+
+    console.log('🎵 TTS Mode:', this.isMobile ? 'Web Speech API (mobile)' : 'Google Cloud TTS (desktop)');
 
     // Web Speech API fallback
     this.synthesis = window.speechSynthesis;
@@ -228,71 +237,98 @@ class TextToSpeechWrapper {
    * Speak using Web Speech API (fallback)
    * @param {string} text - The text to speak
    * @param {object} options - Optional configuration
-   * @returns {boolean} - Success status
+   * @returns {Promise<boolean>} - Success status
    */
   speakWithWebSpeech(text, options = {}) {
-    if (!this.synthesis) {
-      console.error('Web Speech API not available');
-      return false;
-    }
-
-    // Ensure iOS audio is unlocked
-    if (!this.iosUnlocked) {
-      this.unlockIOSAudio();
-    }
-
-    // iOS/Safari sometimes needs a delay before speaking
-    if (this.synthesis.paused) {
-      this.synthesis.resume();
-    }
-
-    // Cancel any queued speech
-    this.synthesis.cancel();
-
-    // Create new utterance
-    this.currentUtterance = new SpeechSynthesisUtterance(text);
-
-    // Apply configuration
-    this.currentUtterance.rate = options.rate || this.config.rate;
-    this.currentUtterance.pitch = options.pitch || this.config.pitch;
-    this.currentUtterance.volume = options.volume || this.config.volume;
-    this.currentUtterance.lang = options.lang || this.config.lang;
-
-    // Try to use a good voice
-    if (this.voices.length > 0) {
-      const preferredVoice = this.voices.find(voice =>
-        voice.lang.startsWith('en') && !voice.name.includes('Google')
-      );
-      if (preferredVoice) {
-        this.currentUtterance.voice = preferredVoice;
+    return new Promise((resolve) => {
+      if (!this.synthesis) {
+        console.error('Web Speech API not available');
+        resolve(false);
+        return;
       }
-    }
 
-    // Event handlers
-    this.currentUtterance.onstart = () => {
-      console.log('Speech started (Web Speech API)');
-    };
+      console.log('🗣️ Using Web Speech API');
+      console.log('📝 Text:', text.substring(0, 100));
+      console.log('🌍 Language option:', options.language);
 
-    this.currentUtterance.onend = () => {
-      console.log('Speech ended (Web Speech API)');
-      this.currentUtterance = null;
-    };
+      // Ensure iOS audio is unlocked
+      if (!this.iosUnlocked) {
+        this.unlockIOSAudio();
+      }
 
-    this.currentUtterance.onerror = (event) => {
-      console.error('Speech error:', event.error);
-      this.currentUtterance = null;
-    };
+      // iOS/Safari sometimes needs a delay before speaking
+      if (this.synthesis.paused) {
+        this.synthesis.resume();
+      }
 
-    // Speak the text
-    try {
+      // Cancel any queued speech
+      this.synthesis.cancel();
+
+      // Wait a bit for cancel to take effect
       setTimeout(() => {
-        this.synthesis.speak(this.currentUtterance);
-      }, 100);
-      return true;
-    } catch (error) {
-      console.error('Error speaking text:', error);
-      return false;
-    }
+        // Create new utterance
+        this.currentUtterance = new SpeechSynthesisUtterance(text);
+
+        // Map language codes
+        let lang = 'en-US';
+        if (options.language) {
+          const detectedLang = options.language.toLowerCase();
+          if (detectedLang === 'ru' || detectedLang === 'russian') {
+            lang = 'ru-RU';
+          } else if (detectedLang === 'en' || detectedLang === 'english') {
+            lang = 'en-US';
+          }
+        }
+
+        // Apply configuration
+        this.currentUtterance.rate = options.rate || this.config.rate;
+        this.currentUtterance.pitch = options.pitch || this.config.pitch;
+        this.currentUtterance.volume = options.volume || this.config.volume;
+        this.currentUtterance.lang = lang;
+
+        console.log('🔊 Speaking with language:', lang);
+
+        // Try to find a good voice for the language
+        if (this.voices.length > 0) {
+          const voicesForLang = this.voices.filter(voice =>
+            voice.lang.startsWith(lang.split('-')[0])
+          );
+
+          if (voicesForLang.length > 0) {
+            // Prefer local/native voices over network voices
+            const localVoice = voicesForLang.find(v => v.localService);
+            this.currentUtterance.voice = localVoice || voicesForLang[0];
+            console.log('🎤 Using voice:', this.currentUtterance.voice.name);
+          }
+        }
+
+        // Event handlers
+        this.currentUtterance.onstart = () => {
+          console.log('✅ Speech started (Web Speech API)');
+        };
+
+        this.currentUtterance.onend = () => {
+          console.log('✅ Speech ended (Web Speech API)');
+          this.currentUtterance = null;
+          resolve(true);
+        };
+
+        this.currentUtterance.onerror = (event) => {
+          console.error('❌ Speech error:', event.error);
+          this.currentUtterance = null;
+          resolve(false);
+        };
+
+        // Speak the text
+        try {
+          this.synthesis.speak(this.currentUtterance);
+          console.log('📢 Speech queued');
+        } catch (error) {
+          console.error('❌ Error speaking text:', error);
+          resolve(false);
+        }
+      }, 50);
+    });
   }
 
   /**
