@@ -22,7 +22,8 @@ const elements = {
   status: document.getElementById('status'),
   compatibilityWarning: document.getElementById('compatibilityWarning'),
   loadingSpinner: document.getElementById('loadingSpinner'),
-  silentModeToggle: document.getElementById('silentModeToggle')
+  silentModeToggle: document.getElementById('silentModeToggle'),
+  testAudioBtn: document.getElementById('testAudioBtn')
 };
 
 /**
@@ -88,6 +89,9 @@ function initializeApp() {
 
   // Setup silent mode toggle
   setupSilentModeToggle();
+
+  // Setup test audio button
+  setupTestAudioButton();
 
   console.log('App initialized successfully');
   updateStatus(isTouchDevice ? 'Ready - Hold to talk' : 'Ready - Click to toggle');
@@ -388,12 +392,29 @@ async function processUserMessage(message) {
 
     // Speak the response only if silent mode is OFF
     if (!appState.silentMode) {
-      // Pass the detected language to TTS
-      await appState.textToSpeech.speak(reply, {
-        language: appState.currentLanguage
-      });
+      console.log('🔊 Silent mode is OFF - playing audio response');
+      console.log('🌍 Using language:', appState.currentLanguage);
+
+      // Show visual indicator
+      updateStatus('Playing audio...');
+
+      try {
+        // Pass the detected language to TTS
+        const success = await appState.textToSpeech.speak(reply, {
+          language: appState.currentLanguage
+        });
+
+        if (!success) {
+          console.error('❌ TTS failed to play audio');
+          alert('Audio playback failed. Check console for details or enable Silent Mode to use text-only.');
+        }
+      } catch (error) {
+        console.error('❌ TTS error:', error);
+        alert('Audio error: ' + error.message);
+      }
     } else {
-      console.log('Silent mode enabled - skipping text-to-speech');
+      console.log('🔇 Silent mode is ENABLED - skipping text-to-speech');
+      alert('Silent mode is ON. Toggle it off to hear voice responses.');
     }
 
     updateStatus('Ready');
@@ -546,6 +567,54 @@ function updateSilentModeUI() {
       label.classList.remove('active');
     }
   }
+}
+
+/**
+ * Setup test audio button for troubleshooting
+ */
+function setupTestAudioButton() {
+  if (!elements.testAudioBtn) return;
+
+  elements.testAudioBtn.addEventListener('click', async () => {
+    console.log('🧪 Testing audio playback...');
+
+    // Check silent mode
+    if (appState.silentMode) {
+      alert('Silent mode is ON. Turn it off to test audio.');
+      return;
+    }
+
+    // Disable button during test
+    elements.testAudioBtn.disabled = true;
+    elements.testAudioBtn.textContent = 'Testing...';
+
+    try {
+      // Test with a simple message
+      const testText = 'Audio test successful. You should hear this message.';
+      console.log('🔊 Playing test audio:', testText);
+
+      const success = await appState.textToSpeech.speak(testText, {
+        language: 'en'
+      });
+
+      if (success) {
+        console.log('✅ Test audio completed');
+        alert('Audio test completed! If you heard the message, audio is working.');
+      } else {
+        console.error('❌ Test audio failed');
+        alert('Audio test failed. Check console for details.');
+      }
+    } catch (error) {
+      console.error('❌ Test audio error:', error);
+      alert('Audio test error: ' + error.message);
+    } finally {
+      // Re-enable button
+      elements.testAudioBtn.disabled = false;
+      elements.testAudioBtn.textContent = 'Test Audio';
+    }
+  });
+
+  console.log('Test audio button initialized');
 }
 
 // Initialize app when DOM is ready

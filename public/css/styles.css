@@ -184,6 +184,8 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .silent-mode-label {
@@ -271,6 +273,30 @@ html {
 .silent-mode-label.active .icon-mute {
   display: inline;
   color: var(--warning-color);
+}
+
+/* Test Audio Button */
+.test-audio-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 2px solid var(--primary-color);
+  background-color: white;
+  color: var(--primary-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow);
+}
+
+.test-audio-btn:hover {
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: var(--shadow-lg);
+}
+
+.test-audio-btn:active {
+  transform: scale(0.95);
 }
 
 /* Push-to-Talk Button */
@@ -497,6 +523,15 @@ html {
   .compatibility-warning {
     padding: 10px 15px;
     font-size: 0.85rem;
+  }
+
+  .test-audio-btn {
+    padding: 5px 12px;
+    font-size: 0.75rem;
+  }
+
+  .silent-mode-container {
+    gap: 8px;
   }
 }
 

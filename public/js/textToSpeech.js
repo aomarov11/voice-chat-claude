@@ -118,9 +118,24 @@ class TextToSpeechWrapper {
 
         // Play audio
         console.log('▶️ Playing audio...');
-        await this.currentAudio.play();
-        console.log('✅ Audio playback started successfully');
-        return true;
+        try {
+          await this.currentAudio.play();
+          console.log('✅ Audio playback started successfully');
+          return true;
+        } catch (playError) {
+          console.error('❌ Audio.play() failed:', playError);
+          console.error('Play error name:', playError.name);
+          console.error('Play error message:', playError.message);
+
+          // Show user-friendly error on mobile
+          if (playError.name === 'NotAllowedError') {
+            alert('Audio playback blocked. Please enable audio permissions or tap to hear responses.');
+          }
+
+          // Fall back to Web Speech API
+          console.log('🔄 Falling back to Web Speech API');
+          return this.speakWithWebSpeech(text, options);
+        }
       } catch (error) {
         console.error('❌ OpenAI TTS error:', error);
         console.error('Error stack:', error.stack);
