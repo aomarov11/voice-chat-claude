@@ -11,15 +11,14 @@
         <!-- Header -->
         <header class="header">
             <h1>Voice Chat with Claude</h1>
-            <p class="subtitle">Click to toggle OR hold to talk</p>
+            <p class="subtitle" id="subtitle">Press and hold to talk</p>
         </header>
 
         <!-- Conversation Container -->
         <main class="conversation-container" id="conversationContainer">
-            <div class="welcome-message">
-                <p>Welcome! Two ways to record:</p>
-                <p style="margin-top: 10px; font-size: 0.95em;"><strong>Toggle:</strong> Quick tap to start, tap again to stop</p>
-                <p style="font-size: 0.95em;"><strong>Hold:</strong> Press and hold while talking, release to send</p>
+            <div class="welcome-message" id="welcomeMessage">
+                <p>Welcome! Press and hold the button while talking.</p>
+                <p style="margin-top: 10px; font-size: 0.9em;">Release when you're done to send your message.</p>
             </div>
         </main>
 
@@ -63,7 +62,7 @@
                     <line x1="12" y1="19" x2="12" y2="23"></line>
                     <line x1="8" y1="23" x2="16" y2="23"></line>
                 </svg>
-                <span class="button-text">Tap or Hold (SPACE works too!)</span>
+                <span class="button-text" id="buttonText">Hold to Talk</span>
             </button>
 
             <!-- Browser Compatibility Warning -->
