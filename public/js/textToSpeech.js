@@ -305,20 +305,29 @@ class TextToSpeechWrapper {
         let lang = 'en-US';
         if (options.language) {
           const detectedLang = options.language.toLowerCase();
+          console.log('🌍 Detected language from options:', detectedLang);
+
           if (detectedLang === 'ru' || detectedLang === 'russian') {
             lang = 'ru-RU';
           } else if (detectedLang === 'en' || detectedLang === 'english') {
             lang = 'en-US';
+          } else {
+            console.warn('⚠️ Unknown language, using en-US:', detectedLang);
           }
         }
 
         // Apply configuration
         this.currentUtterance.rate = options.rate || this.config.rate;
         this.currentUtterance.pitch = options.pitch || this.config.pitch;
-        this.currentUtterance.volume = options.volume || this.config.volume;
+        this.currentUtterance.volume = options.volume || 1.0;
         this.currentUtterance.lang = lang;
 
-        console.log('🔊 Speaking with language:', lang);
+        console.log('🔊 Utterance config:');
+        console.log('  - lang:', lang);
+        console.log('  - rate:', this.currentUtterance.rate);
+        console.log('  - pitch:', this.currentUtterance.pitch);
+        console.log('  - volume:', this.currentUtterance.volume);
+        console.log('  - text length:', text.length);
 
         // Try to find a good voice for the language
         if (this.voices.length > 0) {
@@ -355,16 +364,32 @@ class TextToSpeechWrapper {
 
         // Speak the text
         try {
-          console.log('📢 Calling synthesis.speak()...');
+          console.log('📢 Calling synthesis.speak() with utterance...');
+          console.log('  - Utterance object:', this.currentUtterance);
+          console.log('  - synthesis.speaking before:', this.synthesis.speaking);
+          console.log('  - synthesis.pending before:', this.synthesis.pending);
+
           this.synthesis.speak(this.currentUtterance);
-          console.log('✅ Speech queued successfully');
+
+          console.log('✅ synthesis.speak() called');
+          console.log('  - synthesis.speaking after:', this.synthesis.speaking);
+          console.log('  - synthesis.pending after:', this.synthesis.pending);
 
           // Check if speaking actually started
           setTimeout(() => {
-            if (this.synthesis.speaking) {
-              console.log('✅ Confirmed: synthesis is speaking');
+            const isSpeaking = this.synthesis.speaking;
+            const isPending = this.synthesis.pending;
+
+            console.log('⏱️ Status after 100ms:');
+            console.log('  - speaking:', isSpeaking);
+            console.log('  - pending:', isPending);
+
+            if (isSpeaking || isPending) {
+              console.log('✅ Confirmed: synthesis is active');
             } else {
-              console.warn('⚠️ Warning: synthesis.speak() called but not speaking');
+              console.error('❌ Warning: synthesis.speak() called but not speaking/pending!');
+              alert('Speech queued but not playing. This might be a browser issue.');
+              resolve(false);
             }
           }, 100);
         } catch (error) {

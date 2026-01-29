@@ -407,27 +407,41 @@ async function processUserMessage(message) {
     addMessageToUI('assistant', reply);
 
     // Speak the response only if silent mode is OFF
+    console.log('=== TTS Flow Debug ===');
+    console.log('Silent mode check:', appState.silentMode);
+    console.log('Reply text:', reply.substring(0, 50) + '...');
+    console.log('Current language:', appState.currentLanguage);
+    console.log('TTS object exists:', !!appState.textToSpeech);
+
     if (!appState.silentMode) {
-      console.log('🔊 Silent mode is OFF - playing audio response');
-      console.log('🌍 Using language:', appState.currentLanguage);
+      console.log('✅ Silent mode is OFF - attempting to play audio response');
 
       // Show visual indicator
       updateStatus('Playing audio...');
 
       try {
+        console.log('🎤 About to call textToSpeech.speak()...');
+
         // Pass the detected language to TTS
         const success = await appState.textToSpeech.speak(reply, {
           language: appState.currentLanguage
         });
 
+        console.log('🎯 speak() returned:', success);
+
         if (!success) {
-          console.error('❌ TTS failed to play audio');
+          console.error('❌ TTS failed - speak() returned false');
+          alert('TTS failed to play audio. Check console for details.');
+        } else {
+          console.log('✅ speak() returned true - audio should be playing');
         }
       } catch (error) {
-        console.error('❌ TTS error:', error);
+        console.error('❌ TTS error caught:', error);
+        alert('TTS error: ' + error.message);
       }
     } else {
       console.log('🔇 Silent mode is ENABLED - skipping text-to-speech');
+      alert('Silent mode is ON! Voice responses are disabled.');
     }
 
     updateStatus('Ready');
